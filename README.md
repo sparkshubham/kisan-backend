@@ -8,7 +8,9 @@ Node.js + Express + PostgreSQL API for all three Kisan Mall apps:
 | Admin | 5174 | `/api/admin` |
 | Staff (Packer + Delivery) | 5175 | `/api/staff` |
 
-**API server:** `http://localhost:3000`
+**API server:** `https://kisan-backend-ten.vercel.app`
+
+Health check: `GET https://kisan-backend-ten.vercel.app/api/health`
 
 ---
 
@@ -53,7 +55,8 @@ This runs migrations (schema) and seeds demo data.
 npm run dev
 ```
 
-Health check: `GET http://localhost:3000/api/health`
+Local health check: `GET http://localhost:3000/api/health`  
+Deployed health check: `GET https://kisan-backend-ten.vercel.app/api/health`
 
 ---
 
@@ -182,7 +185,7 @@ backend/
 Add to each app's `.env`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:3000/api
+VITE_API_BASE_URL=https://kisan-backend-ten.vercel.app/api
 ```
 
 Replace Context/localStorage calls with fetch/axios to the API endpoints above.
