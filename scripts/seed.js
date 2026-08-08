@@ -5,9 +5,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/kisanmall';
+const isSupabase = connectionString.includes('supabase.co');
+const ssl = isSupabase || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined;
 
 async function seed() {
-  const client = new pg.Client({ connectionString });
+  const client = new pg.Client({ connectionString, ssl });
   await client.connect();
   console.log('Seeding default configuration...');
 

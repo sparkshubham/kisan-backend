@@ -3,8 +3,11 @@ import { env } from './env.js';
 
 const { Pool } = pg;
 
+const isSupabase = env.databaseUrl.includes('supabase.co');
+
 export const pool = new Pool({
   connectionString: env.databaseUrl,
+  ssl: isSupabase || env.nodeEnv === 'production' ? { rejectUnauthorized: false } : undefined,
 });
 
 pool.on('error', (err) => {

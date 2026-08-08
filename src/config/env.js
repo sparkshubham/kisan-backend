@@ -5,7 +5,7 @@ dotenv.config();
 export const env = {
   port: Number(process.env.PORT) || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/kisanmall',
+  databaseUrl: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres',
   jwt: {
     customerSecret: process.env.JWT_CUSTOMER_SECRET || 'dev-customer-secret',
     adminSecret: process.env.JWT_ADMIN_SECRET || 'dev-admin-secret',

@@ -10,17 +10,23 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const schema = readFileSync(join(__dirname, '../sql/schema.sql'), 'utf8');
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/kisanmall';
+const isSupabase = connectionString.includes('supabase.co');
+const ssl = isSupabase || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined;
 
 function parseDbUrl(url) {
   const u = new URL(url);
-  const dbName = u.pathname.replace(/^\//, '');
+  const dbName = u.pathname.replace(/^\//, '').split('?')[0];
   u.pathname = '/postgres';
   return { dbName, adminUrl: u.toString() };
 }
 
 async function ensureDatabase() {
+  if (isSupabase) {
+    console.log('Skipping CREATE DATABASE (managed Supabase)');
+    return;
+  }
   const { dbName, adminUrl } = parseDbUrl(connectionString);
-  const admin = new pg.Client({ connectionString: adminUrl });
+  const admin = new pg.Client({ connectionString: adminUrl, ssl });
   await admin.connect();
   const { rows } = await admin.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
   if (!rows.length) {
@@ -32,7 +38,7 @@ async function ensureDatabase() {
 
 async function migrate() {
   await ensureDatabase();
-  const client = new pg.Client({ connectionString });
+  const client = new pg.Client({ connectionString, ssl });
   try {
     await client.connect();
     console.log('Connected to PostgreSQL');

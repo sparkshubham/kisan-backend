@@ -35,11 +35,13 @@ npm install
 copy .env.example .env
 ```
 
-Edit `.env` and set your `DATABASE_URL`:
+Edit `.env` and set your `DATABASE_URL` (replace `[YOUR-PASSWORD]` with your Supabase DB password):
 
 ```
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/kisanmall
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.rygpumahblyktgwlfgzv.supabase.co:5432/postgres?sslmode=require
 ```
+
+Also set the same `DATABASE_URL` in Vercel project environment variables.
 
 ### 3. Setup database
 
