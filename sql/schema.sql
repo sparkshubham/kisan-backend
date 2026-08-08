@@ -9,11 +9,14 @@ CREATE TABLE IF NOT EXISTS customers (
   mobile VARCHAR(15) UNIQUE NOT NULL,
   name VARCHAR(100),
   email VARCHAR(150),
+  password_hash VARCHAR(255),
   is_location_set BOOLEAN DEFAULT FALSE,
   status VARCHAR(20) DEFAULT 'active',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 
 CREATE TABLE IF NOT EXISTS admin_users (
   id VARCHAR(50) PRIMARY KEY,
@@ -30,6 +33,7 @@ CREATE TABLE IF NOT EXISTS staff_users (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   mobile VARCHAR(15) UNIQUE NOT NULL,
+  email VARCHAR(150),
   pin_hash VARCHAR(255) NOT NULL,
   role VARCHAR(30) NOT NULL CHECK (role IN ('packer', 'delivery_boy')),
   is_online BOOLEAN DEFAULT TRUE,
@@ -37,6 +41,8 @@ CREATE TABLE IF NOT EXISTS staff_users (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS email VARCHAR(150);
 
 CREATE TABLE IF NOT EXISTS otp_codes (
   id SERIAL PRIMARY KEY,

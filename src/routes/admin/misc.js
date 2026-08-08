@@ -176,7 +176,10 @@ export const usersRouter = (() => {
   }));
   r.post('/', asyncHandler(async (req, res) => {
     const bcrypt = await import('bcryptjs');
-    const hash = await bcrypt.default.hash(req.body.password || 'admin123', 10);
+    if (!req.body.password || String(req.body.password).length < 6) {
+      return fail(res, 'Password must be at least 6 characters');
+    }
+    const hash = await bcrypt.default.hash(req.body.password, 10);
     const id = `admin${Date.now()}`;
     await query('INSERT INTO admin_users (id, name, email, password_hash, role) VALUES ($1,$2,$3,$4,$5)',
       [id, req.body.name, req.body.email, hash, req.body.role || 'store_manager']);
