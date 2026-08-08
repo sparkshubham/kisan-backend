@@ -63,7 +63,13 @@ On Vercel, link the Supabase integration so these variables are injected automat
 npm run db:setup
 ```
 
-This runs migrations (schema) and seeds demo data.
+This runs migrations (schema) and seeds default settings.
+
+**On Vercel:** schema also runs automatically via:
+1. `build` / `db:migrate` during deploy (`vercel.json` buildCommand)
+2. `ensureSchema()` on cold start and first API request
+
+You do **not** need to SSH in and migrate manually after each push (as long as DB env vars are set).
 
 ### 4. Start server
 
@@ -188,10 +194,13 @@ backend/
     ├── server.js
     ├── app.js
     ├── config/             # DB + env
+    ├── db/                 # Auto schema ensure (deploy/cold start)
     ├── docs/               # Swagger / OpenAPI
     ├── middleware/         # Auth + errors
     ├── services/           # Order helpers
     └── routes/
+├── api/index.js            # Vercel serverless entry
+└── vercel.json             # Deploy + migrate on build
         ├── customer/
         ├── admin/
         └── staff/

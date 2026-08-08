@@ -1,18 +1,19 @@
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import pg from 'pg';
 import dotenv from 'dotenv';
 import {
   resolveDirectDatabaseUrl,
   isManagedPostgres,
   getPgConfig,
 } from '../src/config/dbUrl.js';
+import pg from 'pg';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 dotenv.config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const schema = readFileSync(join(__dirname, '../sql/schema.sql'), 'utf8');
+const schemaPath = join(__dirname, '../sql/schema.sql');
+const schema = readFileSync(schemaPath, 'utf8');
 
 const connectionString = resolveDirectDatabaseUrl();
 const pgConfig = getPgConfig(connectionString);
@@ -49,8 +50,30 @@ async function migrate() {
   try {
     await client.connect();
     console.log('Connected to PostgreSQL');
-    await client.query(schema);
-    console.log('Schema applied successfully');
+
+    try {
+      await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+    } catch (err) {
+      console.warn('pgcrypto extension skipped:', err.message);
+    }
+
+    const withoutExtension = schema
+      .replace(/CREATE EXTENSION IF NOT EXISTS "pgcrypto";?\s*/i, '')
+      .trim();
+
+    await client.query(withoutExtension);
+
+    const { rows } = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'otp_codes'
+      ) AS ok
+    `);
+    if (!rows[0]?.ok) {
+      throw new Error('otp_codes table missing after migrate');
+    }
+
+    console.log('Schema applied successfully (otp_codes ready)');
   } catch (err) {
     console.error('Migration failed:', err.message);
     process.exit(1);

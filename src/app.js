@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import routes from './routes/index.js';
 import { setupSwagger } from './docs/swagger.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { ensureSchemaMiddleware } from './db/ensureSchema.js';
 
 const app = express();
 
@@ -21,7 +22,8 @@ app.use(express.urlencoded({ extended: true }));
 
 setupSwagger(app);
 
-app.use('/api', routes);
+// Apply schema automatically on first request (covers Vercel serverless)
+app.use('/api', ensureSchemaMiddleware, routes);
 
 app.use(notFound);
 app.use(errorHandler);
