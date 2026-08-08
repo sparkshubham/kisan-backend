@@ -1,16 +1,11 @@
 import pg from 'pg';
 import { env } from './env.js';
-import { needsSsl } from './dbUrl.js';
+import { getPgConfig } from './dbUrl.js';
 
 const { Pool } = pg;
 
-const connectionString = env.databaseUrl;
-const useSsl = needsSsl(connectionString);
-
 export const pool = new Pool({
-  connectionString,
-  ssl: useSsl ? { rejectUnauthorized: false } : undefined,
-  // Vercel / serverless: keep pool small
+  ...getPgConfig(env.databaseUrl),
   max: env.nodeEnv === 'production' ? 5 : 10,
   idleTimeoutMillis: 20_000,
   connectionTimeoutMillis: 15_000,

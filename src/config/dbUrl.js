@@ -1,13 +1,5 @@
 /**
  * Resolve Postgres connection strings from Supabase / Vercel env vars.
- *
- * Preferred (Vercel Supabase integration):
- *   POSTGRES_URL              — pooled (runtime)
- *   POSTGRES_URL_NON_POOLING  — direct (migrations / scripts)
- *   POSTGRES_PRISMA_URL       — prisma/pgbouncer variant
- *   POSTGRES_USER / HOST / PASSWORD / DATABASE — parts
- *
- * Fallback: DATABASE_URL
  */
 
 function stripQuotes(value = '') {
@@ -21,53 +13,66 @@ function buildFromParts() {
   const database = stripQuotes(process.env.POSTGRES_DATABASE) || 'postgres';
   if (!user || !password || !host) return null;
   const encoded = encodeURIComponent(password);
-  return `postgresql://${user}:${encoded}@${host}:5432/${database}?sslmode=require`;
+  return `postgresql://${user}:${encoded}@${host}:5432/${database}`;
 }
 
-function withSslMode(url) {
+/** Remove sslmode from URL so pg does not enable cert verification via the query string. */
+export function stripSslMode(url) {
   if (!url) return url;
-  if (/[?&]sslmode=/.test(url)) return url;
-  return url.includes('?') ? `${url}&sslmode=require` : `${url}?sslmode=require`;
+  return url
+    .replace(/([?&])sslmode=[^&]*/gi, '$1')
+    .replace(/[?&]$/, '')
+    .replace(/\?&/, '?')
+    .replace(/&&+/g, '&');
+}
+
+function firstUrl(candidates) {
+  return candidates.map(stripQuotes).find(Boolean) || null;
 }
 
 /** Runtime app connection (prefer pooled URL on Vercel). */
 export function resolveDatabaseUrl() {
-  const candidates = [
-    process.env.POSTGRES_URL,
-    process.env.POSTGRES_PRISMA_URL,
-    process.env.DATABASE_URL,
-    buildFromParts(),
-  ];
-  const url = candidates.map(stripQuotes).find(Boolean);
-  if (!url) {
-    return 'postgresql://postgres:postgres@localhost:5432/postgres';
-  }
-  return withSslMode(url);
+  return (
+    firstUrl([
+      process.env.POSTGRES_URL,
+      process.env.POSTGRES_PRISMA_URL,
+      process.env.DATABASE_URL,
+      buildFromParts(),
+    ]) || 'postgresql://postgres:postgres@localhost:5432/postgres'
+  );
 }
 
 /** Direct connection for migrate/seed (avoid pgbouncer transaction pooling). */
 export function resolveDirectDatabaseUrl() {
-  const candidates = [
-    process.env.POSTGRES_URL_NON_POOLING,
-    process.env.DATABASE_URL,
-    process.env.POSTGRES_URL,
-    buildFromParts(),
-  ];
-  const url = candidates.map(stripQuotes).find(Boolean);
-  if (!url) {
-    return 'postgresql://postgres:postgres@localhost:5432/postgres';
-  }
-  return withSslMode(url);
+  return (
+    firstUrl([
+      process.env.POSTGRES_URL_NON_POOLING,
+      process.env.DATABASE_URL,
+      process.env.POSTGRES_URL,
+      buildFromParts(),
+    ]) || 'postgresql://postgres:postgres@localhost:5432/postgres'
+  );
+}
+
+export function isLocalPostgres(url = '') {
+  return /localhost|127\.0\.0\.1/i.test(url);
 }
 
 export function isManagedPostgres(url = '') {
   return /supabase\.co|pooler\.supabase|neon\.tech|amazonaws\.com/i.test(url);
 }
 
-export function needsSsl(url = '') {
-  return (
-    isManagedPostgres(url) ||
-    process.env.NODE_ENV === 'production' ||
-    /sslmode=require/i.test(url)
-  );
+/**
+ * pg Client/Pool options that avoid "self-signed certificate in certificate chain"
+ * with Supabase / managed Postgres.
+ */
+export function getPgConfig(connectionString) {
+  const raw = stripQuotes(connectionString);
+  const cleaned = stripSslMode(raw);
+  const local = isLocalPostgres(cleaned);
+
+  return {
+    connectionString: cleaned,
+    ssl: local ? false : { rejectUnauthorized: false },
+  };
 }

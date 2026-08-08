@@ -1,16 +1,16 @@
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
 import dotenv from 'dotenv';
-import { resolveDirectDatabaseUrl, needsSsl } from '../src/config/dbUrl.js';
+import { resolveDirectDatabaseUrl, getPgConfig } from '../src/config/dbUrl.js';
 
 dotenv.config();
 
 const connectionString = resolveDirectDatabaseUrl();
-const ssl = needsSsl(connectionString) ? { rejectUnauthorized: false } : undefined;
+const pgConfig = getPgConfig(connectionString);
 
 async function seed() {
   console.log('Using connection:', connectionString.replace(/:[^:@/]+@/, ':****@'));
-  const client = new pg.Client({ connectionString, ssl });
+  const client = new pg.Client(pgConfig);
   await client.connect();
   console.log('Seeding default configuration...');
 
