@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run db:migrate",
+  "buildCommand": "npm run db:setup",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]

@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { pool } from '../config/database.js';
+import { bootstrapSeed } from './bootstrapSeed.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,7 +25,7 @@ function loadSchemaSql() {
 }
 
 /**
- * Idempotent schema apply (CREATE TABLE IF NOT EXISTS / ALTER IF NOT EXISTS).
+ * Idempotent schema apply + bootstrap seed for empty tables.
  * Safe to call on every cold start / deploy.
  */
 export async function ensureSchema() {
@@ -33,7 +34,6 @@ export async function ensureSchema() {
   schemaPromise = (async () => {
     const sql = loadSchemaSql();
 
-    // Extension may already exist or require elevated rights on managed DBs
     try {
       await pool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
     } catch (err) {
@@ -57,6 +57,13 @@ export async function ensureSchema() {
     }
 
     console.log('[migrate] Database schema is ready');
+
+    try {
+      await bootstrapSeed(pool);
+    } catch (err) {
+      console.warn('[seed] bootstrap warning:', err.message);
+    }
+
     return true;
   })().catch((err) => {
     schemaPromise = null;
@@ -66,7 +73,7 @@ export async function ensureSchema() {
   return schemaPromise;
 }
 
-/** Express middleware — runs migrate once before handling traffic */
+/** Express middleware — runs migrate+seed once before handling traffic */
 export function ensureSchemaMiddleware(req, res, next) {
   ensureSchema()
     .then(() => next())

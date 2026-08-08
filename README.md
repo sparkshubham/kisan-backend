@@ -65,11 +65,11 @@ npm run db:setup
 
 This runs migrations (schema) and seeds default settings.
 
-**On Vercel:** schema also runs automatically via:
-1. `build` / `db:migrate` during deploy (`vercel.json` buildCommand)
-2. `ensureSchema()` on cold start and first API request
+**On Vercel:** schema + bootstrap seed also run automatically via:
+1. `npm run db:setup` during deploy (`vercel.json` buildCommand)
+2. `ensureSchema()` + `bootstrapSeed()` on cold start / first API request (only fills **empty** tables)
 
-You do **not** need to SSH in and migrate manually after each push (as long as DB env vars are set).
+Bootstrap seed includes: settings, pincodes, categories, brands, sample products, delivery slots, coupons, banners, default admin, and staff accounts.
 
 ### 4. Start server
 
