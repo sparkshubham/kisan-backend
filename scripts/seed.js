@@ -1,14 +1,15 @@
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { resolveDirectDatabaseUrl, needsSsl } from '../src/config/dbUrl.js';
 
 dotenv.config();
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/kisanmall';
-const isSupabase = connectionString.includes('supabase.co');
-const ssl = isSupabase || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined;
+const connectionString = resolveDirectDatabaseUrl();
+const ssl = needsSsl(connectionString) ? { rejectUnauthorized: false } : undefined;
 
 async function seed() {
+  console.log('Using connection:', connectionString.replace(/:[^:@/]+@/, ':****@'));
   const client = new pg.Client({ connectionString, ssl });
   await client.connect();
   console.log('Seeding default configuration...');

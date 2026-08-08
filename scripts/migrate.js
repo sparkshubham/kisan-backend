@@ -3,15 +3,20 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import {
+  resolveDirectDatabaseUrl,
+  isManagedPostgres,
+  needsSsl,
+} from '../src/config/dbUrl.js';
 
 dotenv.config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const schema = readFileSync(join(__dirname, '../sql/schema.sql'), 'utf8');
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/kisanmall';
-const isSupabase = connectionString.includes('supabase.co');
-const ssl = isSupabase || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined;
+const connectionString = resolveDirectDatabaseUrl();
+const ssl = needsSsl(connectionString) ? { rejectUnauthorized: false } : undefined;
+const managed = isManagedPostgres(connectionString);
 
 function parseDbUrl(url) {
   const u = new URL(url);
@@ -21,8 +26,8 @@ function parseDbUrl(url) {
 }
 
 async function ensureDatabase() {
-  if (isSupabase) {
-    console.log('Skipping CREATE DATABASE (managed Supabase)');
+  if (managed) {
+    console.log('Skipping CREATE DATABASE (managed Supabase/Postgres)');
     return;
   }
   const { dbName, adminUrl } = parseDbUrl(connectionString);
@@ -37,6 +42,7 @@ async function ensureDatabase() {
 }
 
 async function migrate() {
+  console.log('Using connection:', connectionString.replace(/:[^:@/]+@/, ':****@'));
   await ensureDatabase();
   const client = new pg.Client({ connectionString, ssl });
   try {

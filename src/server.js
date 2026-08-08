@@ -14,7 +14,8 @@ async function start() {
 
   app.listen(env.port, () => {
     console.log(`Kisan Mall API running on http://localhost:${env.port}`);
-    console.log(`Health: http://localhost:${env.port}/api/health`);
+    console.log(`Health:  http://localhost:${env.port}/api/health`);
+    console.log(`Swagger: http://localhost:${env.port}/api/docs`);
   });
 }
 

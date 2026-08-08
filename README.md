@@ -35,13 +35,27 @@ npm install
 copy .env.example .env
 ```
 
-Edit `.env` and set your `DATABASE_URL` (replace `[YOUR-PASSWORD]` with your Supabase DB password):
+Edit `.env` / Vercel env. The API resolves the DB URL in this order:
+
+**Runtime (app):** `POSTGRES_URL` → `POSTGRES_PRISMA_URL` → `DATABASE_URL` → built from `POSTGRES_USER` + `POSTGRES_PASSWORD` + `POSTGRES_HOST` + `POSTGRES_DATABASE`
+
+**Migrations / seed:** `POSTGRES_URL_NON_POOLING` → `DATABASE_URL` → `POSTGRES_URL` → parts
 
 ```
-DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.rygpumahblyktgwlfgzv.supabase.co:5432/postgres?sslmode=require
+POSTGRES_URL=
+POSTGRES_PRISMA_URL=
+POSTGRES_URL_NON_POOLING=
+POSTGRES_USER=postgres
+POSTGRES_HOST=db.xxxxx.supabase.co
+POSTGRES_PASSWORD=your-password
+POSTGRES_DATABASE=postgres
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.xxxxx.supabase.co:5432/postgres?sslmode=require
 ```
 
-Also set the same `DATABASE_URL` in Vercel project environment variables.
+On Vercel, link the Supabase integration so these variables are injected automatically.
 
 ### 3. Setup database
 
@@ -58,7 +72,9 @@ npm run dev
 ```
 
 Local health check: `GET http://localhost:3000/api/health`  
-Deployed health check: `GET https://kisan-backend-ten.vercel.app/api/health`
+Deployed health check: `GET https://kisan-backend-ten.vercel.app/api/health`  
+Swagger docs: `http://localhost:3000/api/docs` · `https://kisan-backend-ten.vercel.app/api/docs`  
+OpenAPI JSON: `/api/docs.json`
 
 ---
 
@@ -172,6 +188,7 @@ backend/
     ├── server.js
     ├── app.js
     ├── config/             # DB + env
+    ├── docs/               # Swagger / OpenAPI
     ├── middleware/         # Auth + errors
     ├── services/           # Order helpers
     └── routes/

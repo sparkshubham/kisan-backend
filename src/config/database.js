@@ -1,13 +1,19 @@
 import pg from 'pg';
 import { env } from './env.js';
+import { needsSsl } from './dbUrl.js';
 
 const { Pool } = pg;
 
-const isSupabase = env.databaseUrl.includes('supabase.co');
+const connectionString = env.databaseUrl;
+const useSsl = needsSsl(connectionString);
 
 export const pool = new Pool({
-  connectionString: env.databaseUrl,
-  ssl: isSupabase || env.nodeEnv === 'production' ? { rejectUnauthorized: false } : undefined,
+  connectionString,
+  ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+  // Vercel / serverless: keep pool small
+  max: env.nodeEnv === 'production' ? 5 : 10,
+  idleTimeoutMillis: 20_000,
+  connectionTimeoutMillis: 15_000,
 });
 
 pool.on('error', (err) => {
