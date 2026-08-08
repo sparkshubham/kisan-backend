@@ -114,6 +114,55 @@ export function generateDeliveryOtp() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+/** Pick an online delivery boy with the fewest active assigned orders. */
+export async function findAvailableDeliveryBoy() {
+  const { rows } = await query(
+    `SELECT s.id, s.name,
+            COUNT(o.id) FILTER (
+              WHERE o.delivery_status IS NOT NULL
+                AND o.delivery_status NOT IN ('delivered')
+                AND o.status NOT IN ('cancelled', 'delivered')
+            )::int AS active_orders
+     FROM staff_users s
+     LEFT JOIN orders o ON o.assigned_delivery_id = s.id
+     WHERE s.role = 'delivery_boy' AND s.status = 'active' AND s.is_online = true
+     GROUP BY s.id, s.name
+     ORDER BY active_orders ASC, s.created_at ASC
+     LIMIT 1`
+  );
+  return rows[0] || null;
+}
+
+/**
+ * Assign order to a delivery partner (or auto-pick online one).
+ * Sets delivery_status=assigned and ensures OTP exists.
+ */
+export async function assignOrderToDelivery(orderId, staffId = null, assignedBy = 'System') {
+  let deliveryId = staffId;
+  if (!deliveryId) {
+    const available = await findAvailableDeliveryBoy();
+    if (!available) return { assigned: false, reason: 'No online delivery partner' };
+    deliveryId = available.id;
+  }
+
+  const { rows: existing } = await query('SELECT delivery_otp FROM orders WHERE id = $1', [orderId]);
+  const otp = existing[0]?.delivery_otp || generateDeliveryOtp();
+
+  await query(
+    `UPDATE orders
+     SET assigned_delivery_id = $1,
+         delivery_status = 'assigned',
+         delivery_otp = $2,
+         status = 'ready',
+         packer_status = 'ready',
+         updated_at = NOW()
+     WHERE id = $3`,
+    [deliveryId, otp, orderId]
+  );
+  await logOrderStatus(orderId, 'ready', assignedBy, `Assigned to delivery ${deliveryId}`);
+  return { assigned: true, staffId: deliveryId, deliveryOtp: otp };
+}
+
 export async function getDeliveryFee() {
   const { rows } = await query(`SELECT value FROM settings WHERE key = 'store'`);
   return rows[0]?.value?.deliveryFee ?? env.deliveryFee;

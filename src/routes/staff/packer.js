@@ -3,7 +3,7 @@ import { query } from '../../config/database.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok, fail } from '../../utils/response.js';
 import { authStaff, requireStaffRole } from '../../middleware/auth.js';
-import { getOrderWithItems, mapPackerOrder, logOrderStatus } from '../../services/orderService.js';
+import { getOrderWithItems, mapPackerOrder, logOrderStatus, assignOrderToDelivery } from '../../services/orderService.js';
 
 const router = Router();
 router.use(authStaff, requireStaffRole('packer'));
@@ -48,10 +48,25 @@ router.patch('/orders/:orderId/status', asyncHandler(async (req, res) => {
     `UPDATE orders SET packer_status = $1, status = $2, updated_at = NOW() WHERE id = $3`,
     [status, orderStatus, req.params.orderId]
   );
+
+  let assignment = null;
   if (status === 'ready') {
-    await logOrderStatus(req.params.orderId, 'ready', req.staff.id);
+    await logOrderStatus(req.params.orderId, 'ready', req.staff.id, 'Packed and ready');
+    // Auto-assign to an online delivery partner so it appears in their app
+    assignment = await assignOrderToDelivery(req.params.orderId, null, req.staff.id);
   }
-  ok(res, { packerStatus: status, status: orderStatus });
+
+  ok(res, {
+    packerStatus: status,
+    status: orderStatus,
+    deliveryAssigned: !!assignment?.assigned,
+    deliveryStaffId: assignment?.staffId || null,
+    message: assignment?.assigned
+      ? 'Order ready and assigned to delivery partner'
+      : status === 'ready'
+        ? 'Order ready — waiting for a delivery partner (go online or claim from available list)'
+        : undefined,
+  });
 }));
 
 router.post('/orders/:orderId/items/:itemId/scan', asyncHandler(async (req, res) => {

@@ -3,7 +3,7 @@ import { query } from '../../config/database.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok, fail } from '../../utils/response.js';
 import { authAdmin } from '../../middleware/auth.js';
-import { getOrderWithItems, logOrderStatus } from '../../services/orderService.js';
+import { getOrderWithItems, logOrderStatus, assignOrderToDelivery } from '../../services/orderService.js';
 
 const router = Router();
 router.use(authAdmin);
@@ -74,13 +74,9 @@ router.post('/:orderId/cancel', asyncHandler(async (req, res) => {
 
 router.post('/:orderId/assign-delivery', asyncHandler(async (req, res) => {
   const { staffId } = req.body;
-  const otp = String(Math.floor(1000 + Math.random() * 9000));
-  await query(
-    `UPDATE orders SET assigned_delivery_id=$1, delivery_status='assigned', delivery_otp=$2, status='ready', packer_status='ready', updated_at=NOW() WHERE id=$3`,
-    [staffId, otp, req.params.orderId]
-  );
-  await logOrderStatus(req.params.orderId, 'ready', req.admin.email, `Assigned to ${staffId}`);
-  ok(res, { assigned: true, deliveryOtp: otp });
+  if (!staffId) return fail(res, 'staffId required');
+  const result = await assignOrderToDelivery(req.params.orderId, staffId, req.admin.email);
+  ok(res, { assigned: result.assigned, deliveryOtp: result.deliveryOtp });
 }));
 
 export default router;
